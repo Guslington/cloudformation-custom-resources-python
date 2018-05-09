@@ -53,7 +53,12 @@ def lambda_handler(event, context):
                 invoke.invoke(event)
 
         elif event['RequestType'] == 'Update':
-            lambda_response.respond_error("AmazonMQ resource cannot be updated. Create a new resource if changes are required.")
+            comparision = broker.compare_broker_properites(event['PhysicalResourceId'], event['ResourceProperties'])
+            if not comparision:
+                lambda_response.respond_error("AmazonMQ resource cannot be updated. Create a new resource if changes are required.")
+            else:
+                response = broker.get_broker_data(event['PhysicalResourceId'], event['ResourceProperties']['MultiAZ'])
+                lambda_response.respond(data=response)
 
         elif event['RequestType'] == 'Delete':
             broker.delete(event['PhysicalResourceId'])

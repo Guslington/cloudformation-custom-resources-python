@@ -62,6 +62,37 @@ class AmazonMQBrokerLogic:
                       f"in this lambda execution {lambda_context.get_remaining_time_in_millis()}ms")
                 time.sleep(5)
 
+    def compare_broker_properites(self, id, properties):
+        client = boto3.client('mq')
+        response = client.describe_broker(BrokerId=id)
+
+        deployment_mode = "ACTIVE_STANDBY_MULTI_AZ" if properties['MultiAZ'].lower() == "true" else "SINGLE_INSTANCE"
+
+        if  (properties['SecurityGroups'] == response['SecurityGroups']) and \
+            (properties['Subnets'] == response['SubnetIds']) and \
+            (properties['InstanceType'] == response['HostInstanceType']) and \
+            (deployment_mode == response['DeploymentMode']) and \
+            (properties['Name'] == response['BrokerName']):
+            return True
+        else:
+            return False
+
+    def get_broker_data(self, id, multi_az):
+        data = {}
+        client = boto3.client('mq')
+        response = client.describe_broker(BrokerId=id)
+
+        data.update({'BrokerId': response['BrokerId']})
+        data.update({'BrokerArn': response['BrokerArn']})
+
+        active = self.endpoint(response['BrokerId'],1)
+        data.update({'Active': active})
+
+        standby = self.endpoint(response['BrokerId'],2) if multi_az.lower() == "true" else "NONE"
+        data.update({'Standby': standby})
+
+        return data
+
     def delete(self,id):
         client = boto3.client('mq')
         client.delete_broker(
